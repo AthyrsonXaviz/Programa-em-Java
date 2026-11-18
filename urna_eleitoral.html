@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Urna Eleitoral — Simulação</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap');
+:root{--navy:#172b70;--lime:#caff38;--green:#00bd20;--dark:#383838;--panel:#cbd5df}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#14266b;font-family:Arial,sans-serif}
+body{display:grid;place-items:center}
+#stage{position:relative;width:min(100vw,133.333vh);height:min(100vh,75vw);aspect-ratio:4/3;overflow:hidden;background:
+ radial-gradient(ellipse at 83% 95%,rgba(255,255,80,.92) 0%,rgba(184,255,56,.72) 24%,transparent 53%),
+ radial-gradient(ellipse at 52% 48%,rgba(25,255,111,.92) 0%,rgba(26,211,132,.82) 39%,transparent 72%),
+ radial-gradient(ellipse at 1% 1%,#202568 0%,#183b80 22%,transparent 53%),
+ linear-gradient(130deg,#1b327b 0%,#08c99b 50%,#d7ff43 100%);}
+#stage:before,#stage:after{content:"";position:absolute;pointer-events:none;width:28%;height:29%;opacity:.24;background-image:radial-gradient(ellipse,#087f70 0 2px,transparent 2.6px);background-size:13px 13px;mask-image:radial-gradient(ellipse,black 10%,transparent 70%)}
+#stage:before{right:-2%;top:-3%;transform:rotate(18deg)}
+#stage:after{left:-3%;bottom:-5%;transform:rotate(18deg)}
+.screen{position:absolute;inset:0;display:none}
+.screen.active{display:block}
+.display-font{font-family:'Oswald','Arial Narrow',Impact,sans-serif;font-stretch:condensed;font-style:italic;font-weight:700}
+.home-title{position:absolute;top:8.5%;left:0;width:100%;text-align:center;font-size:clamp(34px,6.4vh,66px);letter-spacing:-2px;color:var(--navy)}
+.home-title span{color:var(--lime);margin-right:22px}
+.home-actions{position:absolute;top:51%;left:13.5%;width:73%;display:flex;justify-content:space-between;align-items:center}
+.big-link{font-size:clamp(58px,12vh,118px);line-height:1;color:var(--navy);text-decoration:none;border-bottom:9px solid var(--navy);cursor:pointer;padding:0 3px 1px;transition:transform .15s}
+.big-link:hover{transform:translateY(-5px)}
+.urna-title{position:absolute;top:7.5%;width:100%;text-align:center;color:var(--lime);font-size:clamp(42px,8vh,74px)}
+.ballot{position:absolute;left:18.2%;top:33.3%;width:17%;height:40%;background:#f8f8f8;box-shadow:0 3px 7px #5558;border:8px solid #f5f5f5}
+.ballot-photo{height:78%;background:transparent;display:grid;place-items:center;overflow:hidden}
+.ballot-photo img{width:100%;height:100%;object-fit:cover}
+.ballot-info{height:22%;display:grid;place-items:center;color:#202020;font-size:clamp(9px,1.5vh,15px);font-weight:bold;text-align:center;padding:3px}
+.keypad{position:absolute;left:56.3%;top:33.3%;width:20.5%;height:48.5%;border-radius:13px;background:var(--dark);padding:8.4% 1.2% 5%;display:flex;flex-direction:column;justify-content:space-between}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr) 1fr;gap:4px;flex:1}
+.key{border:0;background:transparent;color:white;font-size:clamp(15px,2.2vh,22px);cursor:pointer;border-radius:7px}
+.key:hover{background:#ffffff20}
+.key.zero{grid-column:2}
+.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:8px}
+.action{border:0;border-radius:14px;height:clamp(30px,5.2vh,42px);font-size:clamp(8px,1.25vh,12px);font-weight:800;cursor:pointer;color:#171717}
+.white{background:#fff}.yellow{background:#e6f34c}.green{background:#00c84a}
+.confirm-layout{position:absolute;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;gap:28px}
+.confirm-text{color:white;text-align:center;font-size:clamp(54px,9.5vh,84px);line-height:1.02;font-family:'Oswald',Arial,sans-serif;font-weight:500}
+.checkmark{width:clamp(92px,13vw,132px);height:clamp(92px,13vw,132px);border-radius:50%;background:#00b91b;display:grid;place-items:center;color:#9aff70;font-size:clamp(66px,10vw,100px);font-weight:400;line-height:1}
+.form-card{position:absolute;left:29.8%;top:10.2%;width:41.5%;height:80%;background:var(--panel);border:2px solid #111;border-radius:34px;padding:6% 6.5% 4%;display:flex;flex-direction:column;align-items:center}
+.form-title{font-size:clamp(31px,5.4vh,48px);line-height:1.25;text-align:center;color:var(--navy);margin:0 0 5.2%;font-weight:700}
+.field{width:87%;height:clamp(52px,9vh,68px);border:0;border-radius:20px;background:#fff;margin-bottom:5.8%;text-align:center;padding:0 18px;font-family:'Oswald',sans-serif;font-style:italic;font-size:clamp(15px,2.3vh,20px);outline:none;color:#222}
+.field::placeholder{color:#c9c9c9}
+.photo-row{width:87%;display:flex;align-items:center;gap:14px;margin-top:1%;min-height:42px}
+.file-label{border:1.5px solid #222;border-radius:7px;background:#fff;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+#photoInput{display:none}
+#photoName{font-size:12px;color:#555;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.photo-preview{width:36px;height:36px;object-fit:cover;border-radius:50%;display:none}
+.submit-row{width:87%;display:flex;justify-content:flex-end;margin-top:auto}
+.submit{border:0;border-radius:22px;background:#fff;padding:15px 22px;font-family:'Oswald',sans-serif;font-style:italic;font-weight:700;font-size:16px;cursor:pointer}
+.submit:hover,.file-label:hover{filter:brightness(.94)}
+.message{position:absolute;left:50%;bottom:4%;transform:translateX(-50%);background:#172b70;color:white;padding:9px 18px;border-radius:9px;font-size:14px;display:none;white-space:nowrap}
+.back{position:absolute;left:3%;top:4%;border:1px solid #ffffff88;background:#14266b55;color:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px}
+@media(max-aspect-ratio:4/3){#stage{width:100vw;height:75vw}}
+</style>
+</head>
+<body>
+<main id="stage">
+  <section class="screen active" id="home">
+    <div class="home-title display-font"><span>URNA</span> ELEITORAL</div>
+    <div class="home-actions">
+      <a class="big-link display-font" onclick="show('vote')">VOTAR</a>
+      <a class="big-link display-font" onclick="show('register')">CADASTRO</a>
+    </div>
+  </section>
+
+  <section class="screen" id="vote">
+    <button class="back" onclick="show('home')">← INÍCIO</button>
+    <div class="urna-title display-font">URNA</div>
+    <div class="ballot">
+      <div class="ballot-photo" id="candidatePhoto"></div>
+      <div class="ballot-info" id="candidateInfo"></div>
+    </div>
+    <div class="keypad">
+      <div class="keys">
+        <button class="key" onclick="digit('1')">1</button><button class="key" onclick="digit('2')">2</button><button class="key" onclick="digit('3')">3</button>
+        <button class="key" onclick="digit('4')">4</button><button class="key" onclick="digit('5')">5</button><button class="key" onclick="digit('6')">6</button>
+        <button class="key" onclick="digit('7')">7</button><button class="key" onclick="digit('8')">8</button><button class="key" onclick="digit('9')">9</button>
+        <button class="key zero" onclick="digit('0')">0</button>
+      </div>
+      <div class="actions">
+        <button class="action white" onclick="blankVote()">BRANCO</button>
+        <button class="action yellow" onclick="correct()">CORRIGE</button>
+        <button class="action green" onclick="confirmVote()">CONFIRMA</button>
+      </div>
+    </div>
+    <div class="message" id="voteMessage"></div>
+  </section>
+
+  <section class="screen" id="voteDone">
+    <div class="confirm-layout"><div class="confirm-text">VOTO<br>CONCLUÍDO</div><div class="checkmark">✓</div></div>
+    <button class="back" onclick="resetVote();show('home')">← INÍCIO</button>
+  </section>
+
+  <section class="screen" id="register">
+    <button class="back" onclick="show('home')">← INÍCIO</button>
+    <form class="form-card" onsubmit="registerCandidate(event)">
+      <h1 class="form-title display-font">CADASTRO DO<br>CANDIDATO</h1>
+      <input class="field" id="candidateName" type="text" placeholder="NOME" required maxlength="60">
+      <input class="field" id="candidateNumber" type="number" placeholder="NÚMERO DO CANDIDATO" required min="1" max="9999">
+      <div class="photo-row">
+        <label class="file-label" for="photoInput">ESCOLHER FOTO</label>
+        <input id="photoInput" type="file" accept="image/*" onchange="previewPhoto(event)">
+        <img id="photoPreview" class="photo-preview" alt="Prévia da foto">
+        <span id="photoName"></span>
+      </div>
+      <div class="submit-row"><button class="submit" type="submit">CONCLUIR CADASTRO</button></div>
+    </form>
+  </section>
+
+  <section class="screen" id="registerDone">
+    <div class="confirm-layout"><div class="confirm-text">CADASTRO<br>CONCLUÍDO</div><div class="checkmark">✓</div></div>
+    <button class="back" onclick="show('home')">← INÍCIO</button>
+  </section>
+</main>
+<script>
+let currentNumber = '';
+let selectedCandidate = null;
+let photoData = '';
+let candidates = [];
+try { candidates = JSON.parse(localStorage.getItem('urnaCandidates') || '[]'); } catch(e) { candidates=[]; }
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');hideMessage();if(id==='vote'){resetVote();}}
+function hideMessage(){const m=document.getElementById('voteMessage');m.style.display='none';}
+function message(t){const m=document.getElementById('voteMessage');m.textContent=t;m.style.display='block';}
+function digit(n){if(currentNumber.length>=4)return;currentNumber+=n;renderCandidate();}
+function correct(){currentNumber='';selectedCandidate=null;renderCandidate();hideMessage();}
+function renderCandidate(){
+  const c=candidates.find(x=>String(x.number)===currentNumber);
+  selectedCandidate=c||null;
+  const info=document.getElementById('candidateInfo'),photo=document.getElementById('candidatePhoto');
+  info.textContent=currentNumber ? (c ? `${c.name} • Nº ${c.number}` : `NÚMERO: ${currentNumber}`) : '';
+  photo.innerHTML=c&&c.photo?`<img src="${c.photo}" alt="">`:'';
+  if(currentNumber&&!c) message('Candidato não encontrado. Confira o número.');
+  else hideMessage();
+}
+function blankVote(){currentNumber='BRANCO';selectedCandidate=null;document.getElementById('candidateInfo').textContent='VOTO EM BRANCO';document.getElementById('candidatePhoto').innerHTML='';hideMessage();}
+function confirmVote(){
+  if(!currentNumber){message('Digite o número do candidato ou selecione BRANCO.');return;}
+  if(currentNumber!=='BRANCO'&&!selectedCandidate){message('Candidato não encontrado.');return;}
+  show('voteDone');
+}
+function resetVote(){currentNumber='';selectedCandidate=null;document.getElementById('candidateInfo').textContent='';document.getElementById('candidatePhoto').innerHTML='';}
+function previewPhoto(e){
+  const f=e.target.files[0];if(!f)return;
+  if(!f.type.startsWith('image/')){alert('Selecione um arquivo de imagem.');return;}
+  const reader=new FileReader();reader.onload=()=>{photoData=reader.result;const p=document.getElementById('photoPreview');p.src=photoData;p.style.display='block';document.getElementById('photoName').textContent=f.name;};reader.readAsDataURL(f);
+}
+function registerCandidate(e){
+  e.preventDefault();
+  const name=document.getElementById('candidateName').value.trim();
+  const number=document.getElementById('candidateNumber').value.trim();
+  if(candidates.some(c=>String(c.number)===number)){alert('Já existe um candidato cadastrado com esse número.');return;}
+  candidates.push({name,number,photo:photoData});
+  try{localStorage.setItem('urnaCandidates',JSON.stringify(candidates));}
+  catch(err){alert('Não foi possível salvar a foto. Tente uma imagem menor.');candidates.pop();return;}
+  e.target.reset();photoData='';document.getElementById('photoPreview').style.display='none';document.getElementById('photoName').textContent='';
+  show('registerDone');
+}
+</script>
+</body>
+</html>
